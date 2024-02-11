@@ -1,1 +1,428 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QRSCAN</title>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-database-compat.js"></script>
+
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;700&display=swap">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.16.0/umd/popper.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+   
+    <link rel="icon" href="https://i.imgur.com/FgNuWA4_d.webp?maxwidth=200" type="image/x-icon">
+    <link rel="shortcut icon" href="https://i.imgur.com/FgNuWA4_d.webp?maxwidth=200" type="image/x-icon">
+
+    
+    <script>
+        var DatabaseURL = "https://qrscan-420ef-default-rtdb.firebaseio.com/";
+
+        const firebaseApp = firebase.initializeApp(
+        { 
+            apiKey: "AIzaSyBgt0nkmlUNrLuD_TTExQFEQfqGmveTGMQ",
+            authDomain: "qrscan-420ef.firebaseapp.com",
+            databaseURL: "https://qrscan-420ef-default-rtdb.firebaseio.com",
+            projectId: "qrscan-420ef",
+            storageBucket: "qrscan-420ef.appspot.com",
+            messagingSenderId: "573938643737",
+            appId: "1:573938643737:web:ab00da79152c653f7f8b88"
+        });
+
+        const db = firebaseApp.firestore();
+        const auth = firebaseApp.auth();
+
+        var database;
+        var dataRef;
+
+        var IstAngemeldet = false;
+
+        database = firebase.database();
+        dataRef = database.ref();
+
+        function InitQRSCAN(PasswortBenutzereingabe)
+        {        
+            AktualisierenButton.style.display = "none";
+            TabelleGesamteAuflistungen.style.display = "none";
+            TabelleEinzelneAuflistung.style.display = "none";
+            Ladezeichen.style.display = "block";
+
+            var email = "qrscan@qrscan.at";
+            //Passwort: Die Glocke bei der letztes Jahr die meinsten Scans waren alles kleingeschrieben
+            
+
+            auth.signInWithEmailAndPassword(email, PasswortBenutzereingabe)
+            .then((userCredential) =>
+            {
+                console.log("Anmeldung erfolgreich:", userCredential.user.uid);
+                document.getElementById("GesamteWebseite").style.display = "inline-block";
+                //console.log(GetVariable("data/var1"));
+
+                document.getElementById("LoginPanel").style.display = "none";
+
+                IstAngemeldet = true;
+
+                Event_AnmeldungAbgeschlossen();
+            })
+            .catch((error) => 
+            {
+                IstAngemeldet = false;
+
+                alert("Fehler bei der Anmeldung.")
+            });
+        }
+
+        function GetVariable(Pfad)
+        {
+            return new Promise((resolve, reject) =>
+            {
+                dataRef.child(Pfad).once("value")
+                    .then((snapshot) =>
+                    {
+                        const variableninhalt = snapshot.val();
+                        resolve(variableninhalt);
+                    })
+                    .catch((error) =>
+                    {
+                        console.log("Fehler beim Lesen der Daten:", error.message);
+                        reject(error);
+                    });
+            });
+        }
+
+        function SetVariable(Pfad, neuerWert)
+        {
+            return new Promise((resolve, reject) =>
+            {
+                dataRef.child(Pfad).set(neuerWert)
+                    .then(() =>
+                    {
+                        console.log(`Erfolgr.geschrieben '${Pfad}', '${neuerWert}'`);
+                        resolve();
+                    })
+                    .catch((error) =>
+                    {
+                        console.log("Fehler beim Schreiben der Daten:", error.message);
+                        reject(error);
+                    });
+            });
+        }
+
+        function DeleteVariable(Pfad)
+        {
+            return new Promise((resolve, reject) =>
+            {
+                dataRef.child(Pfad).remove()
+                    .then(() =>
+                    {
+                        console.log(`Erfolgreich gelöscht '${Pfad}'`);
+                        resolve();
+                    })
+                    .catch((error) =>
+                    {
+                        console.log("Fehler beim Löschen der Daten:", error.message);
+                        reject(error);
+                    });
+            });
+        }
+
+        function GetSubvariablen(Pfad)
+        {
+            return new Promise((resolve, reject) => {
+                dataRef.child(Pfad).once("value")
+                    .then((snapshot) => {
+                        const data = snapshot.val();
+                        if (data && typeof data === "object") {
+                            const subVariablesList = Object.keys(data).map(subVar => `${Pfad}/${subVar}`);
+                            resolve(subVariablesList);
+                        } else {
+                            resolve([]);
+                        }
+                    })
+                    .catch((error) => {
+                        console.log("Fehler beim Lesen der Daten:", error.message);
+                        reject(error);
+                    });
+            });
+        }
+
+        function formatDate(date)
+        {
+            if (!(date instanceof Date))
+            {
+                return "Ungültiges Datum";
+            }
+
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+
+            const formattedDate = `${day}.${month}.${year}`;
+
+            return formattedDate;
+        }
+
+        function extractParameter(ParameterName)
+        {
+            var urlParams = new URLSearchParams(window.location.search);
+            var parameterValue = urlParams.get(ParameterName);
+            return parameterValue;
+        }
+
+        function GetCurrentDateTimeString()
+        {
+            const lokaleZeit = new Date();
+
+            const dateOptions =
+            {
+                timeZone: 'Europe/Vienna',
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            };
+
+            return new Intl.DateTimeFormat('de-AT', dateOptions).format(lokaleZeit);
+        }
+
+        function GetFolderOrFilename(path)
+        {
+            var teile = path.split('/');
+            return teile[teile.length - 1];
+        }
+    </script>
+</head>
+<body style="background-color: rgb(36, 36, 36); color: rgb(218, 218, 218);">
+    <div class="mt-4 ml-3" id="GesamteWebseite" style="display: none; width: 92%;">  
+  
+        <div class="row ml-1 mr-1" >
+            <div class="col">
+                <h1>QRSCAN</h1><br>
+
+                <div id="LoginPanel">
+                    <label for="basic-url">Passwort</label>
+                    <div class="input-group mb-3">
+                        <input type="text" class="form-control" id="PasswortTextBox" aria-describedby="basic-addon3">
+                    </div>
+    
+                    <button type="button" class="btn btn-outline-success" onclick="InitQRSCAN(document.getElementById('PasswortTextBox').value)">AUSWERTUNG ANZEIGEN</button>
+                </div>
+
+                <button type="button" id="AktualisierenButton" class="btn btn-outline-warning mt-3" onclick="Aktualisieren()" style="display: none;">AKTUALISIEREN</button>
+                
+                <div id="TabelleGesamteAuflistungen" style="display: none;" class="mt-5">
+                    <div style="line-height: 40px;">
+                        <table class="table table-striped table-dark">
+                            <thead class="thead-success" style="background-color: rgb(40, 167, 69);">
+                            <tr>
+                                <th scope="col">QR CODE NAME</th>
+                                <th scope="col">ANZAHL</th>
+                                <th scope="col">ZULETZT</th>
+                                <th scope="col">LINK ZU</th>
+                                <th scope="col">OPTIONEN</th>
+                            </tr>
+                            </thead>
+                            <tbody id="TabellenBody">
+                            
+                            </tbody>
+                        </table>
+                    </div>
+                </div>   
+                
+                
+                <div id="TabelleEinzelneAuflistung" class="mt-5" style="display: none;">
+                    <h2><strong>ALLE SCANS VON:</strong><br><small>FeriendorfBankRadweg</small></h2>
+                    <div id="GenaueAuflistungListe">
+
+                    </div>
+
+                    <br><button type="button" class="btn btn-outline-danger" onclick="ZurUebersicht()">ZURÜCK ZUR ÜBERSICHT</button>
+                </div>
+
+                <div id="Ladezeichen" class="mt-5" style="display: none;">
+                    <div class="spinner-border text-secondary" role="status" id="Hauptseite_AnzahlSichtungenGesamt_Ladezeichen" style="display: inline-block; text-align: center;"></div><br>
+                </div>
+            </div>
+        </div>
+        
+        
+        
+    </div> 
+
+    
+</body>
+</html>
+
+
+<!-- Datensammler -->
+<script>
+    var QrCodeName = extractParameter("q")
+
+    if(QrCodeName != "" && QrCodeName != null && QrCodeName != "QrCodeName")
+    {
+        (async () =>
+        {                 
+            
+            var DateTime = GetCurrentDateTimeString();
+            await SetVariable(`Datensammler/${QrCodeName}/${(new Date().getTime() / 1000).toFixed("0")}`, DateTime)
+
+            var Weiterleitung = await GetVariable(`Weiterleitungen/${QrCodeName}`);
+            if(Weiterleitung != "" && Weiterleitung != null && Weiterleitung != undefined && Weiterleitung != "null" && Weiterleitung != "undefined")
+            {
+                window.location = Weiterleitung;
+            }
+            else
+            {
+                window.location = "https://www.google.at/";
+            }
+        })()        
+    } 
+    else
+    {
+        document.getElementById("GesamteWebseite").style.display = "inline-block";
+    }   
+</script>
+
+<!-- Admin Page -->
+<script>
+    var TabelleGesamteAuflistungen = document.getElementById("TabelleGesamteAuflistungen");
+    var TabelleEinzelneAuflistung = document.getElementById("TabelleEinzelneAuflistung");
+    var GenaueAuflistungListe = document.getElementById("GenaueAuflistungListe");
+    var Ladezeichen = document.getElementById("Ladezeichen");
+    var TabellenBody = document.getElementById("TabellenBody");
+    var AktualisierenButton = document.getElementById("AktualisierenButton");
+
+    function ZurUebersicht()
+    {
+        AktualisierenButton.style.display = "none";
+        TabelleGesamteAuflistungen.style.display = "none";
+        TabelleEinzelneAuflistung.style.display = "none";
+        Ladezeichen.style.display = "block";
+
+        (async () =>
+        {    
+            TabellenBody.innerHTML = "";
+
+            for(Variablenpfad of await GetSubvariablen(`Datensammler`))
+            {
+                var QrCodeName = GetFolderOrFilename(Variablenpfad);
+                var EinzelneScans = await GetSubvariablen(Variablenpfad);
+
+                
+                var Weiterleitung = await GetVariable(`Weiterleitungen/${QrCodeName}`);
+                if(!(Weiterleitung != "" && Weiterleitung != null && Weiterleitung != undefined && Weiterleitung != "null" && Weiterleitung != "undefined"))
+                {
+                    Weiterleitung = "-- STANDARD (GOOGLE) --"
+                }
+
+                TabellenBody.innerHTML +=
+                `
+                <tr>
+                    <th scope="row">${QrCodeName}</th>
+                    <td><strong>${EinzelneScans.length}</strong> Scans</td>
+                    <td>${await GetVariable(EinzelneScans[EinzelneScans.length - 1])}</td>
+                    <td>${Weiterleitung}</td>
+                    <td><button type="button" onclick="ZurGenauenAuflistung('${QrCodeName}')" class="btn btn-secondary">Genaue Auflistung</button><button type="button" onclick="LinkZielAendern('${QrCodeName}')" class="btn btn-secondary ml-2">Ziel-Link ändern</button><button type="button" onclick="QrCodeLoeschen('${QrCodeName}')" class="btn btn-danger ml-2">QR Code löschen</button></td>
+                </tr>
+                `
+            }   
+
+            
+            Ladezeichen.style.display = "none";
+            TabelleGesamteAuflistungen.style.display = "block";        
+            AktualisierenButton.style.display = "block";
+            AnsichtIstGeradeBeiDerUebersicht = true;
+            AktualisierenButton.style.display = "block";
+            
+        })()
+
+
+        
+        
+    }
+
+    var AnsichtIstGeradeBeiDerUebersicht = true;
+    var AktuellerQRCodeNameBeiDerGenauenAuflistung = "";
+    function ZurGenauenAuflistung(QrCodeName)
+    {
+        AktuellerQRCodeNameBeiDerGenauenAuflistung = QrCodeName;
+        TabelleGesamteAuflistungen.style.display = "none";
+        TabelleEinzelneAuflistung.style.display = "none";
+        Ladezeichen.style.display = "block";
+        AktualisierenButton.style.display = "none";
+
+
+        (async () =>
+        {                 
+            GenaueAuflistungListe.innerHTML = "";
+
+            var GenaueAuflistung = await GetSubvariablen(`Datensammler/${QrCodeName}`)
+
+
+            for(Item of GenaueAuflistung)
+            {
+                GenaueAuflistungListe.innerHTML += `${await GetVariable(Item)} <a onclick="DeleteVariable('${Item}'); Aktualisieren();" style="color: brown;"> ( LÖSCHEN )</a><br>`;
+            }
+
+            
+
+            Ladezeichen.style.display = "none";
+            TabelleEinzelneAuflistung.style.display = "block";     
+            AnsichtIstGeradeBeiDerUebersicht = false;
+            AktualisierenButton.style.display = "block";            
+        })()
+    }
+
+    function Event_AnmeldungAbgeschlossen()
+    {
+        Ladezeichen.style.display = "none";
+        ZurUebersicht();
+    }
+
+    function LinkZielAendern(QrCodeName)
+    {
+        var eingegebeneUrl = prompt("Neues Ziel eingeben:");
+        if (!eingegebeneUrl.startsWith("http://") && !eingegebeneUrl.startsWith("https://"))
+        {
+            eingegebeneUrl = "https://" + eingegebeneUrl;
+        }
+
+        SetVariable(`Weiterleitungen/${QrCodeName}`, eingegebeneUrl)
+        Aktualisieren();
+    }
+
+    function QrCodeLoeschen(QrCodeName)
+    {
+        if(prompt("Schreibe 'LOESCHEN' in das Feld um es zu bestätigen.") == "LOESCHEN")
+        {
+            DeleteVariable(`Datensammler/${QrCodeName}`);
+            Aktualisieren();
+        }
+        else
+        {
+            alert("Löschen abgebrochen. Es wurden keine Veränderungen durchgeführt.");
+        }
+    }
+
+    function Aktualisieren()
+    {
+        if(AnsichtIstGeradeBeiDerUebersicht)
+        {
+            ZurUebersicht();
+        }
+        else
+        {
+            ZurGenauenAuflistung(AktuellerQRCodeNameBeiDerGenauenAuflistung)
+        }
+        
+    }
+</script>
+
 
