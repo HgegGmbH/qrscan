@@ -15,6 +15,8 @@
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.16.0/umd/popper.min.js"></script>
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+    <script src="https://cdn.rawgit.com/davidshimjs/qrcodejs/gh-pages/qrcode.min.js"></script>
    
     <link rel="icon" href="https://i.imgur.com/FgNuWA4_d.webp?maxwidth=200" type="image/x-icon">
     <link rel="shortcut icon" href="https://i.imgur.com/FgNuWA4_d.webp?maxwidth=200" type="image/x-icon">
@@ -227,6 +229,7 @@
                                 <th scope="col">ZULETZT</th>
                                 <th scope="col">LINK ZU</th>
                                 <th scope="col">OPTIONEN</th>
+                                <th scope="col">LINK</th>
                             </tr>
                             </thead>
                             <tbody id="TabellenBody">
@@ -245,6 +248,8 @@
 
                     <br><button type="button" class="btn btn-outline-danger" onclick="ZurUebersicht()">ZURÜCK ZUR ÜBERSICHT</button>
                 </div>
+
+                <rb><br></rb><div id="qrcode"></div>
 
                 <div id="Ladezeichen" class="mt-5" style="display: none;">
                     <div class="spinner-border text-secondary" role="status" id="Hauptseite_AnzahlSichtungenGesamt_Ladezeichen" style="display: inline-block; text-align: center;"></div><br>
@@ -329,7 +334,8 @@
                     <td><strong>${EinzelneScans.length}</strong> Scans</td>
                     <td>${await GetVariable(EinzelneScans[EinzelneScans.length - 1])}</td>
                     <td>${Weiterleitung}</td>
-                    <td><button type="button" onclick="ZurGenauenAuflistung('${QrCodeName}')" class="btn btn-secondary">Genaue Auflistung</button><button type="button" onclick="LinkZielAendern('${QrCodeName}')" class="btn btn-secondary ml-2">Ziel-Link ändern</button><button type="button" onclick="QrCodeLoeschen('${QrCodeName}')" class="btn btn-danger ml-2">QR Code löschen</button></td>
+                    <td><button type="button" onclick="ZurGenauenAuflistung('${QrCodeName}')" class="btn btn-secondary">Genaue Auflistung</button><button type="button" onclick="LinkZielAendern('${QrCodeName}')" class="btn btn-secondary ml-2">Ziel-Link ändern</button><button type="button" onclick="QRCodeGenerieren('${QrCodeName}')" class="btn btn-light ml-2">QR Code generieren</button><button type="button" onclick="QrCodeLoeschen('${QrCodeName}')" class="btn btn-danger ml-2">QR Code löschen</button></td>
+                    <td>hgeggmbh.github.io/qrscan?q=${QrCodeName}</td>
                 </tr>
                 `
             }   
@@ -400,7 +406,7 @@
 
     function QrCodeLoeschen(QrCodeName)
     {
-        if(prompt("Schreibe 'LOESCHEN' in das Feld um es zu bestätigen.") == "LOESCHEN")
+        if(prompt("Schreibe 'ok' in das Feld um es zu bestätigen.") == "ok")
         {
             DeleteVariable(`Datensammler/${QrCodeName}`);
             Aktualisieren();
@@ -409,6 +415,25 @@
         {
             alert("Löschen abgebrochen. Es wurden keine Veränderungen durchgeführt.");
         }
+    }
+
+    function QRCodeGenerieren(QrCodeName)
+    {
+        var QRCodeElement = document.getElementById("qrcode");
+
+        QRCodeElement.innerHTML = "";
+
+        var Link = `hgeggmbh.github.io/qrscan?q=${QrCodeName}`;
+
+        var qrcode = new QRCode(QRCodeElement,
+        {
+            text: Link,
+            width: 150,
+            height: 150,
+            colorDark : "#000000",
+            colorLight : "#ffffff",
+            correctLevel : QRCode.CorrectLevel.H
+        });
     }
 
     function Aktualisieren()
