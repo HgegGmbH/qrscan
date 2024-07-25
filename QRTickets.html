@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR Tickets</title>
+
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Russo+One&display=swap">
+
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-database-compat.js"></script>
+
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;700&display=swap">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.16.0/umd/popper.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+    <link rel="icon" href="https://cdn-icons-png.flaticon.com/512/1198/1198374.png" type="image/x-icon">
+    <link rel="shortcut icon" href="https://cdn-icons-png.flaticon.com/512/1198/1198374.png" type="image/x-icon">
+
+
+    <style>
+        .Produkt {
+            display: inline-block;
+            vertical-align: top;
+            border: 1px solid rgb(207, 207, 207);
+            border-radius: 5px;
+            padding: 10px;
+            width: 100%;
+            margin-top: 10px;
+        }
+    </style>
+
+    <script>
+        function e(name)
+        {
+            return document.getElementById(name);
+        }
+
+        function Show(element)
+        {
+            element.style.display = "block"
+        }
+
+        function Hide(element)
+        {
+            element.style.display = "none"
+        }
+
+        var DatabaseURL = "https://untmprivat-default-rtdb.europe-west1.firebasedatabase.app/";
+
+        const firebaseApp = firebase.initializeApp(
+        { 
+            apiKey: "AIzaSyCPn52UmQZaBGtOj-gYeT7oTVNxIeYIz6U",
+            authDomain: "untmprivat.firebaseapp.com",
+            databaseURL: "https://untmprivat-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "untmprivat",
+            storageBucket: "untmprivat.appspot.com",
+            messagingSenderId: "1027445748417",
+            appId: "1:1027445748417:web:b99ab46836ff2b4d67da40"
+        });
+
+        const db = firebaseApp.firestore();
+        const auth = firebaseApp.auth();
+
+        var database;
+        var dataRef;
+
+        var IstAngemeldet = false;
+
+        var userCredential_global
+        var GlobalUserName = ""
+        var GlobalDatabaseUserName = ""
+
+        function InitWebseite(email, passwort)
+        {        
+            auth.signInWithEmailAndPassword(email, passwort)
+            .then((userCredential) =>
+            {
+                userCredential_global = userCredential
+                GlobalUserName = userCredential_global.user.email.split('@')[0]
+                GlobalDatabaseUserName = GlobalUserName.replace('.', '_').toLowerCase()
+
+                console.log("Anmeldung erfolgreich:", userCredential.user.uid);            
+
+                database = firebase.database();
+                dataRef = database.ref();
+
+                IstAngemeldet = true;
+
+                document.getElementById("AnmeldungFenster").style.display = "none";
+                document.getElementById("GesamteWebseite").style.display = "block";
+                document.getElementById("AnmeldungFehlgeschlagen").style.display = "none";
+
+                setCookie("EmailTicketClient", email)
+                setCookie("PasswortTicketClient", passwort)
+
+                Event_AnmeldungAbgeschlossen();
+            })
+            .catch((error) => 
+            {
+                IstAngemeldet = false;
+
+                document.getElementById("AnmeldungFenster").style.display = "none";
+                document.getElementById("GesamteWebseite").style.display = "none";
+                document.getElementById("AnmeldungFehlgeschlagen").style.display = "block";
+            });
+        }
+
+        function GetVariable(Pfad)
+        {
+            return new Promise((resolve, reject) =>
+            {
+                dataRef.child(Pfad).once("value")
+                    .then((snapshot) =>
+                    {
+                        const variableninhalt = snapshot.val();
+                        resolve(variableninhalt);
+                        console.log(`LESEN: ${Pfad}`);
+                    })
+                    .catch((error) =>
+                    {
+                        console.log("Fehler beim Lesen der Daten:", error.message);
+                        reject(error);
+                    });
+            });
+        }
+
+        function GetAllUsers()
+        {
+            return new Promise((resolve, reject) =>
+            {
+                dataRef.child(`users/`).once("value")
+                    .then((snapshot) =>
+                    {
+                        snapshot.forEach((child) =>
+                        {
+                            alert(child.val().email)
+                        })
+                    })
+                    .catch((error) =>
+                    {
+                        console.log("Fehler beim Lesen der Benutzer:", error.message);
+                        reject(error);
+                    });
+            });
+
+        }
+
+        function SetVariable(Pfad, neuerWert)
+        {
+            return new Promise((resolve, reject) =>
+            {
+                dataRef.child(Pfad).set(neuerWert)
+                    .then(() =>
+                    {
+                        console.log(`Erfolgr.geschrieben '${Pfad}', '${neuerWert}'`);
+                        resolve();
+                    })
+                    .catch((error) =>
+                    {
+                        console.log("Fehler beim Schreiben der Daten:", error.message);
+                        reject(error);
+                    });
+            });
+        }
+
+        function GetSubvariablen(Pfad)
+        {
+            return new Promise((resolve, reject) => {
+                dataRef.child(Pfad).once("value")
+                    .then((snapshot) => {
+                        const data = snapshot.val();
+                        if (data && typeof data === "object") {
+                            const subVariablesList = Object.keys(data).map(subVar => `${Pfad}/${subVar}`);
+                            resolve(subVariablesList);
+                        } else {
+                            resolve([]);
+                        }
+                    })
+                    .catch((error) => {
+                        console.log("Fehler beim Lesen der Daten:", error.message);
+                        reject(error);
+                    });
+            });
+        }
+
+        function formatDate(date)
+        {
+            if (!(date instanceof Date))
+            {
+                return "Ungültiges Datum";
+            }
+
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+
+            const formattedDate = `${day}.${month}.${year}`;
+
+            return formattedDate;
+        }
+
+        function getWochentag(date)
+        {
+            var WochentagNr = date.getDay()
+            if(WochentagNr == 0){return "Sonntag"}
+            if(WochentagNr == 1){return "Montag"}
+            if(WochentagNr == 2){return "Dienstag"}
+            if(WochentagNr == 3){return "Mittwoch"}
+            if(WochentagNr == 4){return "Donnerstag"}
+            if(WochentagNr == 5){return "Freitag"}
+            if(WochentagNr == 6){return "Samstag"}
+        }
+
+        function GetStringDate(date)
+        {
+            if (!(date instanceof Date))
+            {
+                return "UngultigesDatum";
+            }
+
+            return `${currentDateTime.getFullYear()}-${String(currentDateTime.getMonth() + 1).padStart(2, '0')}-${String(currentDateTime.getDate()).padStart(2, '0')}`
+        }
+
+        function getZeitstempel()
+        {
+            return new Date().getTime();
+        }
+
+        function getFileName(path)
+        {
+            const segments = path.split('/');
+            return segments[segments.length - 1];
+        }
+
+        function setCookie(name, value)
+        {
+            var expirationDate = new Date();
+            expirationDate.setDate(expirationDate.getDate() + 30);
+
+            document.cookie = name + "=" + value + "; expires=" + expirationDate.toUTCString() + "; path=/";
+        }
+
+        function getCookie(name)
+        {
+            var cookieName = name + "=";
+            var cookies = document.cookie.split(';');
+
+            for (var i = 0; i < cookies.length; i++)
+            {
+                if(cookies[i].includes(cookieName))
+                {
+                    return cookies[i].replace(cookieName, '').trim()
+                }
+                // var cookie = cookies[i].trim();
+                // if (cookie.indexOf(cookieName) === 0)
+                // {
+                //     return cookie.substring(cookieName.length, cookie.length);
+                // }
+            }
+
+            return null;
+        }
+
+        function deleteCookie(name)
+        {
+            document.cookie = name + "=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+        }
+
+        function cookieExists(name)
+        {
+            return getCookie(name) !== null;
+        }
+    </script>
+</head>
+<body class="container mt-5" style="background-color: rgb(36, 36, 36); color: rgb(218, 218, 218); ">
+    <div class="container mt-5" id="AnmeldungFenster" style="display: none;"> 
+        <strong style="font-size: 35pt; color: rgb(255, 255, 255);">QR-Code Ticketsystem</strong><br><br>
+        <label>Benutzername oder Email-Adresse eingeben:</label>
+        <input type="text" class="form-control" id="EmailTextBox" aria-describedby="basic-addon3" placeholder="Nachname.Vorname"><br>
+        <label>Passwort eingeben:</label>
+        <input type="password" class="form-control" id="PasswortTextBox" aria-describedby="basic-addon3" placeholder="Passwort"><br>
+        <button type="button" onclick="InitWebseite(document.getElementById('EmailTextBox').value.toLowerCase().replace('@ticketsystem.untm', '') + '@ticketsystem.untm', document.getElementById('PasswortTextBox').value)" class="btn btn-secondary">Anmelden</button>
+    </div>
+
+    <div class="container mt-5" id="AnmeldungFehlgeschlagen" style="display: none; text-align: center;"> 
+        <strong style="font-size: 25pt; color: rgb(255, 255, 255);">Authentifizierung<br>fehlgeschlagen</strong><br><br>
+        <button type="button" onclick="location.reload()" class="btn btn-danger">Erneut versuchen</button>
+    </div>
+
+    <div class="container mt-5" id="QRSCAN" style="display: none; text-align: center;">  
+        <strong style="font-size: 25pt; color: rgb(255, 255, 255);">QR-CODE SCAN</strong><br><br>
+        <button style="width: 100%;" class="btn btn-danger" onclick="QRSCAN_Abbrechen()">Scan Abbrechen</button>
+        <br><br>
+        <div id="qr-code-reader" style="width: 100%; height: 100%;"></div>
+    </div>
+
+    <div id="GesamteWebseite" style="display: none;">
+        <div class="row">
+
+            <div class="ml-4" style="width: 80px; height: 80px;">
+                <img src="https://cdn-icons-png.flaticon.com/512/1198/1198374.png" style="width: 80px;" alt="">
+            </div>
+
+            <div class="ml-3">
+                <strong style="font-size: 18pt;">QR Ticketsystem<br><span id="UsernameFrontend">Lade Benutzername ...</span></strong><br><br>
+            </div>
+
+
+            
+        </div>
+        
+        <hr style="background-color: white;">
+
+        
+        <div id="Hauptmenue">
+
+        </div>
+
+        <div id="Unterseiten" style="display: none;">
+            
+            
+
+            <div id="TicketAdmin" style="display: none;">                      
+                <strong style="font-size: x-large;">Admin - Optionen</strong><br><br>
+            
+                <div class="Produkt">
+                    <h5 class="card-title"><img src="https://cdn-icons-png.flaticon.com/512/786/786415.png" class="mr-2" height="22px" alt="">Neues Ticket erstellen</h5>
+                    <label>Benutzername oder Email-Adresse eingeben:</label>
+                    <input type="text" style="margin-bottom: 6px;" oninput="Hide(e('NeuesTicketEingabeUngueltig')); Hide(e('NeuesTicketHinzugefuegt'))" class="form-control" id="NeuesTicketUserTextBox" aria-describedby="basic-addon3" placeholder="Nachname.Vorname">
+                    <label id="NeuesTicketEingabeUngueltig" style="color: brown; display: none;">Eingabe ungültig!</label>
+                    <label id="NeuesTicketHinzugefuegt" style="color: mediumseagreen; display: none;">Ticket hinzugefügt!</label>
+                    <button type="button" style="margin-top: 5px;" onclick="TicketHinzufuegen(e('NeuesTicketUserTextBox').value)" class="btn btn-success"><img src="https://cdn-icons-png.flaticon.com/512/6785/6785304.png" class="mr-2" height="22px" alt="">Hinzufügen</button>
+                </div>
+
+                <div class="Produkt">
+                    <h5 class="card-title"><img src="https://cdn-icons-png.flaticon.com/512/7781/7781637.png" class="mr-2" height="22px" alt="">Ticket kontrollieren</h5>
+                    <button type="button" style="margin-top: 5px;" onclick="Hide(e('TicketKontrolleErgebnis')); QRCodeKontrollieren()" class="btn btn-warning"><img src="https://cdn-icons-png.flaticon.com/512/5393/5393325.png" class="mr-2" height="22px" alt="">Kontrollieren</button>
+                    
+                    <div id="TicketKontrolleErgebnis" style="display: none;">
+                        
+                    </div>                    
+                </div>                        
+
+                
+            </div>
+
+
+            <div id="TicketClient" style="display: none;">    
+                
+
+                <div id="TicketAnzeigenClient" style="display: none; text-align: center;">
+                    <canvas id="CodeGeneratorCanvas" style="display: none;"></canvas>
+                    <div class="Produkt" style="width: 300px; height: 350px; background-color: rgb(53, 53, 53);">
+                        <div id="AztecCodeBild"></div>                                          
+                    </div>
+                    
+                    <br><br>
+                    <button type="button" onclick="Show(e('AlleTicketsClient')); Hide(e('TicketAnzeigenClient')); Show(e('TicketAuflistungClient'))" class="btn btn-secondary"><img src="https://cdn-icons-png.flaticon.com/512/5393/5393325.png" class="mr-2" height="22px" alt="">Alle Tickets anzeigen</button>
+                </div>
+                                
+                <div id="TicketAuflistungClient">
+                    <strong style="font-size: x-large;">Ihre Tickets</strong><br><br>
+                    <button type="button" style="margin-top: 5px;" onclick="ClientTicketsAktualisieren()" class="btn btn-warning"><img src="https://cdn-icons-png.flaticon.com/512/3580/3580284.png" class="mr-2" height="22px" alt="">Aktualisieren</button>
+                    <br><br>
+    
+                    <div id="AlleTicketsClient" style="display: block;">
+                         
+                    </div>
+                </div>
+            </div>
+                        
+            <div id="Static">
+                <hr style="background-color: white;"><br><button class="btn btn-secondary" onclick="Abmelden()"><img src="https://cdn-icons-png.flaticon.com/512/4263/4263209.png" class="mr-2" height="22px" alt="">Abmelden</button>
+            </div>            
+        </div>
+        <br><br><br><br><br><br>
+    </div>
+
+
+    
+</body>
+</html>
+
+
+
+<!-- General -->
+<script>    
+    if(cookieExists("EmailTicketClient") && cookieExists("PasswortTicketClient"))
+    {
+        InitWebseite(getCookie("EmailTicketClient"), getCookie("PasswortTicketClient"))
+    }
+    else
+    {
+        document.getElementById("AnmeldungFenster").style.display = "block"
+    }
+
+    function Event_AnmeldungAbgeschlossen()
+    {
+        if(userCredential_global.user.email == "admin@ticketsystem.untm")
+        {
+            SeiteOeffnen('TicketAdmin')
+            e("UsernameFrontend").innerHTML = "Administrator"
+        }
+        else
+        {
+            SeiteOeffnen('TicketClient')
+
+            e("UsernameFrontend").innerHTML = GetFullNameFromDatabaseName(GlobalDatabaseUserName)     
+            ClientTicketsAktualisieren()     
+        }
+    }
+
+    function GetAlleUnterseiten()
+    {
+        var rv = []
+
+        for(Unterseite of e("Unterseiten").childNodes)
+        {
+            if(Unterseite.id != undefined && Unterseite.id != "Static")
+            {
+                rv.push(Unterseite.id)
+            }            
+        }
+
+        return rv
+    }
+
+    var currentDateTime = new Date()
+    var currentDateString = GetStringDate(currentDateTime)
+
+    function HauptmenueAufrufen()
+    {
+        Show(e("Hauptmenue"))
+        Hide(e("Unterseiten"))
+
+        GetAlleUnterseiten()
+    }
+
+    function Abmelden()
+    {
+        deleteCookie("EmailTicketClient")
+        deleteCookie("PasswortTicketClient")
+        location.reload()
+    }
+
+    function SeiteOeffnen(SeiteName)
+    {
+        for(Unterseite of GetAlleUnterseiten())
+        {
+            Hide(e(Unterseite))
+        }
+        
+        Hide(e("Hauptmenue"))
+        Show(e("Unterseiten"))
+        Show(e(SeiteName))
+
+        if(SeiteName == "Kleiderwechselplan")
+        {
+            var currentDateTimeverw = currentDateTime;
+            if(currentDateTime.getHours() <= 12)
+            {
+                currentDateTimeverw.setDate(currentDateTimeverw.getDate() - 1)
+            }
+         
+            e("KleiderwechselplanDatum").value = `${currentDateTimeverw.getFullYear()}-${String(currentDateTimeverw.getMonth() + 1).padStart(2, '0')}-${String(currentDateTimeverw.getDate()).padStart(2, '0')}`
+           
+            KleiderwechselplanAktualisieren()            
+        }
+    }
+
+    function LinkOeffnen(link)
+    {
+        location.assign(link)
+    }
+</script>
+
+<!-- Ticket -->
+<script>
+    function GetFullNameFromDatabaseName(NachnameUnterstrichVorname)
+    {
+        if(NachnameUnterstrichVorname.includes('_'))
+        {
+            var Nachname = NachnameUnterstrichVorname.split('_')[0]
+            var Vorname = NachnameUnterstrichVorname.split('_')[1]
+
+            Nachname = Nachname.charAt(0).toUpperCase() + Nachname.slice(1);
+            Vorname = Vorname.charAt(0).toUpperCase() + Vorname.slice(1);
+
+            return `${Nachname} ${Vorname}`
+        }
+        else
+        {
+            return NachnameUnterstrichVorname
+        }        
+    }
+
+    function makeid(length)
+    {
+        let result = '';
+        const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
+        const charactersLength = characters.length;
+        let counter = 0;
+        while (counter < length) {
+        result += characters.charAt(Math.floor(Math.random() * charactersLength));
+        counter += 1;
+        }
+        return result;
+    }
+
+    function TicketHinzufuegen(NameOderEmail)
+    {
+        (async () =>
+        {             
+            if(NameOderEmail == "" || NameOderEmail == undefined || NameOderEmail == null || !NameOderEmail.includes('.'))    
+            {
+                Show(NeuesTicketEingabeUngueltig)
+            }
+            else
+            {
+                var DatabaseName = NameOderEmail.replace('@ticketsystem.untm', '').replace('.', '_').toLowerCase()
+                var TicketId = makeid(6)
+                await SetVariable(`TicketSystem/${DatabaseName}/${TicketId}/Gueltig`, true)
+                await SetVariable(`TicketSystem/${DatabaseName}/${TicketId}/Ausstelldatum`, new Date().getTime())
+                NeuesTicketUserTextBox.value = ""
+                Show(NeuesTicketHinzugefuegt)
+                NeuesTicketHinzugefuegt.innerHTML = `Ticket für '${GetFullNameFromDatabaseName(DatabaseName)}' hinzugefügt.`
+            }
+
+
+        })()
+
+
+        
+
+    }
+</script>
+
+
+<!-- QRSCAN -->
+<script src="https://unpkg.com/html5-qrcode"></script>
+<script src="https://zingl.github.io/barcode.js"></script>
+<script>
+    var ScrollPositionVorQRSCAN = 0;
+    var qrCodeScanner;
+    
+    function QRCodeKontrollieren()
+    {
+        ScrollPositionVorQRSCAN = window.scrollY;
+
+        e("QRSCAN").style.display = "block"
+        e("GesamteWebseite").style.display = "none"      
+
+        qrCodeScanner = new Html5Qrcode('qr-code-reader');  
+
+        qrCodeScanner.start(
+            {
+                facingMode: 'environment'
+            },
+
+            {
+                fps: 5,
+                qrbox: 200
+            },
+
+            qrCodeMessage =>
+            {
+                var QRCodeString = qrCodeMessage;
+                qrCodeScanner.stop();
+
+                (async () =>
+                {      
+                    var IstGueltig = false
+                    var BenutzerVollstaendigerName = ""
+                    var BenutzerDatenbankname = ""
+                    var Austelldatum = ""
+                    var TicketId = ""
+                    var Abgelaufen = false
+
+                    var AlleUser = Object.entries(await GetVariable("TicketSystem"))
+
+                    for (var [Client, Tickets] of AlleUser)
+                    {
+                        var AlleTickets = Object.entries(Tickets)
+                        for (var [TicketIdDiesesTickets, TicketDetails] of AlleTickets)
+                        {
+                            if(TicketIdDiesesTickets == QRCodeString)
+                            {
+                                TicketId = TicketIdDiesesTickets
+                                BenutzerDatenbankname = Client
+                                BenutzerVollstaendigerName = GetFullNameFromDatabaseName(BenutzerDatenbankname)
+
+                                if(TicketDetails.Gueltig == false)
+                                {
+                                    Abgelaufen = true
+                                }
+                                else
+                                {
+                                    IstGueltig = true                                    
+                                    var DatumObjektDiesesTickets = new Date(TicketDetails.Ausstelldatum)
+                                    Austelldatum = `${GetDatumString(DatumObjektDiesesTickets)} ${GetTimeString(DatumObjektDiesesTickets)}`                                
+                                }
+
+                                break
+                            }
+                            
+                        }
+                    }
+
+                    if(IstGueltig)
+                    {
+                        e("TicketKontrolleErgebnis").innerHTML = `
+                        <div class="alert alert-success" style="margin-top: 10px;" role="alert">
+                            <img src="https://cdn-icons-png.flaticon.com/512/6785/6785304.png" class="mr-2" height="22px" alt=""><strong>TICKET GÜLTIG!</strong><br>
+                            <div style="margin-top: 7px;">
+                                <strong>Besitzer: </strong>${BenutzerVollstaendigerName}<br>
+                                <strong>Ausgestellt: </strong>${Austelldatum}<br>
+                                <button type="button" style="margin-top: 10px;" onclick="TicketEinloesen('${BenutzerDatenbankname}', '${TicketId}')" class="btn btn-secondary"><img src="https://cdn-icons-png.freepik.com/512/3858/3858485.png" class="mr-2" height="22px" alt="">Einlösen</button>
+                            </div>
+                        </div> `
+                    }
+                    else
+                    {
+                        if(Abgelaufen)
+                        {
+                            e("TicketKontrolleErgebnis").innerHTML = `
+                            <div class="alert alert-danger" style="margin-top: 10px;" role="alert">
+                                <img src="https://i.imgur.com/Rj1vuiK.png" class="mr-2" height="22px" alt=""><strong>TICKET UNGÜLTIG!</strong><br>
+                                <div style="margin-top: 7px;">                                    
+                                    <strong>Besitzer: </strong>${BenutzerVollstaendigerName}<br>                                    
+                                    Dieses Ticket wurde bereits eingelöst!
+                                </div>
+                            </div> `
+                        }
+                        else
+                        {
+                            e("TicketKontrolleErgebnis").innerHTML = `
+                            <div class="alert alert-danger" style="margin-top: 10px;" role="alert">
+                                <img src="https://i.imgur.com/Rj1vuiK.png" class="mr-2" height="22px" alt=""><strong>TICKET UNGÜLTIG!</strong><br><div style="margin-top: 7px;">Nicht in Datenbank gefunden!</div>
+                            </div> `
+                        }
+                        
+                    }
+
+                    Show(e("TicketKontrolleErgebnis"))
+
+                    e("QRSCAN").style.display = "none"
+                    e("GesamteWebseite").style.display = "block"
+
+                    window.scrollTo(0, ScrollPositionVorQRSCAN);
+                })()
+            },
+
+            errorMessage =>
+            {
+                
+            }
+        );
+    }
+
+    function QRSCAN_Abbrechen()
+    {
+        qrCodeScanner.stop();
+
+        e("QRSCAN").style.display = "none"
+        e("GesamteWebseite").style.display = "block"
+        window.scrollTo(0, ScrollPositionVorQRSCAN);
+    }
+
+    function ClientCodeAnzeigen(TicketId, Austelldatum)
+    {
+        e("AztecCodeBild").innerHTML = ""
+        GenerateAztec(TicketId)
+        Hide(e('AlleTicketsClient'))
+        Show(e('TicketAnzeigenClient'))
+        Hide(e('TicketAuflistungClient'))
+    }
+
+    function ClientTicketsAktualisieren()
+    {
+        
+        (async () =>
+        {                        
+            e("AlleTicketsClient").innerHTML = `<div class="spinner-border text-secondary" role="status" style="text-align: center;"></div><br><br>Lade Tickets ...`
+            var NeuesinnerHTML = ""     
+
+            var AlleTickets = Object.entries(await GetVariable(`TicketSystem/${GlobalDatabaseUserName}`))
+
+            for (var [TicketIdDiesesTickets, TicketDetails] of AlleTickets)
+            {                
+                var DatumObjektDiesesTickets = new Date(TicketDetails.Ausstelldatum)
+                NeuesinnerHTML += `            
+                <div class="Produkt" style="background-color: rgba(247, 143, 46, 0.205);">
+                    <h5 class="card-title"><img src="https://i.imgur.com/VHqE0xP.png" class="mr-2" height="40px" alt=""><strong>Ticket vom ${GetDatumString(DatumObjektDiesesTickets)} ${GetTimeString(DatumObjektDiesesTickets)}</strong></h5>
+                    <button type="button" onclick="ClientCodeAnzeigen('${TicketIdDiesesTickets}')" class="btn btn-secondary"><img src="https://cdn-icons-png.flaticon.com/512/5393/5393325.png" class="mr-2" height="22px" alt="">Code anzeigen</button>                                         
+                </div> `              
+            }
+            
+            e("AlleTicketsClient").innerHTML = NeuesinnerHTML
+
+        })()
+
+
+        
+    }
+
+    function GenerateAztec(aztecValue)
+    {
+        var canvas = e("CodeGeneratorCanvas")
+        Hide(CodeGeneratorCanvas)
+
+		var ctx = canvas.getContext('2d')
+        var mat = aztec(aztecValue, 90); // setCell of array
+        canvas.style.height = "1000px"
+        canvas.style.widows = "1000px"
+		canvas.height = mat.length*10
+        canvas.width = canvas.height
+        //ctx.scale(10,10); // scale height
+        
+        ctx.scale(10, 10);
+
+        ctx.fillStyle = "rgb(200, 200, 200)";
+
+		ctx.fill(new Path2D(toPath(mat)));
+
+        e("AztecCodeBild").innerHTML = `<img src="${canvas.toDataURL()}" alt=""><br><br><strong>TICKET ID: </strong>${aztecValue}`
+    }
+
+    function GetDatumString(DatumObjekt)
+    {
+        const tag = DatumObjekt.getDate().toString().padStart(2, '0');
+        const monat = (DatumObjekt.getMonth() + 1).toString().padStart(2, '0');
+        const jahr = DatumObjekt.getFullYear();
+
+
+        return formatiertesDatum = `${tag}.${monat}.${jahr}`;
+    }
+
+    function GetTimeString(DatumObjekt)
+    {
+        const stunden = DatumObjekt.getHours().toString().padStart(2, '0');
+        const minuten = DatumObjekt.getMinutes().toString().padStart(2, '0');
+
+        return `${stunden}:${minuten}`;
+    }
+
+    function TicketEinloesen(BenutzerDatenbankname, TicketId)
+    {
+        (async () =>
+        {                 
+            await SetVariable(`TicketSystem/${BenutzerDatenbankname}/${TicketId}/Gueltig`, false)
+            Hide(e('TicketKontrolleErgebnis'));
+        })()
+       
+    }
+      
+	
+</script>
