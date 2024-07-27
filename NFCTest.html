@@ -8,7 +8,7 @@
 
     <body>
         <h1>NFC-Kartenleser</h1>
-        <button onclick="alert(Read_NFC_Tag())">Scan NFC</button>
+        <button onclick="ButtonlesenClick()">Scan NFC</button>
         <button onclick="Write_NFC_Tag(prompt())">Write NFC</button>
     </body>
 
@@ -17,42 +17,48 @@
 <script>
     const ndef = new NDEFReader();
 
-    function Read_NFC_Tag()
+    function ButtonlesenClick()
     {
         (async () =>
         {                 
-            if ('NDEFReader' in window)
-            {
-                try
-                {                
-                    await ndef.scan();
-                    ndef.onreading = event =>
-                    {
-                        const decoder = new TextDecoder();
-                        for (const record of event.message.records)
-                        {
-                            const text = decoder.decode(record.data);
-                            return text
-                            break
-                        }
-                    };
-                    ndef.onerror = event =>
-                    {
-                        alert('Fehler beim Lesen der NFC-Karte: ' + event.error);
-                    };
-                }
-                catch (error)
-                {
-                    alert('Fehler: ' + error);
-                }
-            }
-            else
-            {
-                alert('Web NFC wird von diesem Gerät nicht unterstützt.');
-            }
+           var ReadText = await Read_NFC_Tag()
+           alert(ReadText)
         })()
     }
 
+
+    async function Read_NFC_Tag()
+    {
+        if ('NDEFReader' in window)
+        {
+            try
+            {                
+                await ndef.scan();
+                ndef.onreading = event =>
+                {
+                    const decoder = new TextDecoder();
+                    for (const record of event.message.records)
+                    {
+                        const text = decoder.decode(record.data);
+                        return text
+                        break
+                    }
+                };
+                ndef.onerror = event =>
+                {
+                    alert('Fehler beim Lesen der NFC-Karte: ' + event.error);
+                };
+            }
+            catch (error)
+            {
+                alert('Fehler: ' + error);
+            }
+        }
+        else
+        {
+            alert('Web NFC wird von diesem Gerät nicht unterstützt.');
+        }
+    }    
 
     function Write_NFC_Tag(text)
     {
