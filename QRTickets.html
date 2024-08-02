@@ -33,6 +33,108 @@
             width: 100%;
             margin-top: 10px;
         }
+        
+        .checkbox-wrapper-4 * {
+            box-sizing: border-box;
+        }
+        .checkbox-wrapper-4 .cbx {
+            -webkit-user-select: none;
+            user-select: none;
+            cursor: pointer;
+            padding: 6px 8px;
+            border-radius: 6px;
+            overflow: hidden;
+            transition: all 0.2s ease;
+            display: inline-block;
+        }
+        .checkbox-wrapper-4 .cbx:not(:last-child) {
+            margin-right: 6px;
+        }
+        .checkbox-wrapper-4 .cbx:hover {
+            background: rgba(0,119,255,0.06);
+        }
+        .checkbox-wrapper-4 .cbx span {
+            float: left;
+            vertical-align: middle;
+            transform: translate3d(0, 0, 0);
+        }
+        .checkbox-wrapper-4 .cbx span:first-child {
+            position: relative;
+            width: 18px;
+            height: 18px;
+            border-radius: 4px;
+            transform: scale(1);
+            border: 1px solid #cccfdb;
+            transition: all 0.2s ease;
+            box-shadow: 0 1px 1px rgba(0,16,75,0.05);
+        }
+        .checkbox-wrapper-4 .cbx span:first-child svg {
+            position: absolute;
+            top: 3px;
+            left: 2px;
+            fill: none;
+            stroke: #fff;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            stroke-dasharray: 16px;
+            stroke-dashoffset: 16px;
+            transition: all 0.3s ease;
+            transition-delay: 0.1s;
+            transform: translate3d(0, 0, 0);
+        }
+        .checkbox-wrapper-4 .cbx span:last-child {
+            padding-left: 8px;
+            line-height: 18px;
+        }
+        .checkbox-wrapper-4 .cbx:hover span:first-child {
+            border-color: #07f;
+        }
+        .checkbox-wrapper-4 .inp-cbx {
+            position: absolute;
+            visibility: hidden;
+        }
+        .checkbox-wrapper-4 .inp-cbx:checked + .cbx span:first-child {
+            background: #07f;
+            border-color: #07f;
+            animation: wave-4 0.4s ease;
+        }
+        .checkbox-wrapper-4 .inp-cbx:checked + .cbx span:first-child svg {
+            stroke-dashoffset: 0;
+        }
+        .checkbox-wrapper-4 .inline-svg {
+            position: absolute;
+            width: 0;
+            height: 0;
+            pointer-events: none;
+            user-select: none;
+        }
+        @media screen and (max-width: 640px) {
+            .checkbox-wrapper-4 .cbx {
+            width: 100%;
+            display: inline-block;
+            }
+        }
+        @-moz-keyframes wave-4 {
+            50% {
+            transform: scale(0.9);
+            }
+        }
+        @-webkit-keyframes wave-4 {
+            50% {
+            transform: scale(0.9);
+            }
+        }
+        @-o-keyframes wave-4 {
+            50% {
+            transform: scale(0.9);
+            }
+        }
+        @keyframes wave-4 {
+            50% {
+            transform: scale(0.9);
+            }
+        }
     </style>
 
     <script>
@@ -368,6 +470,20 @@
                     <strong style="font-size: x-large;">Ihre Tickets:</strong><br><br>
                     <button type="button" style="margin-top: 5px;" onclick="ClientTicketsAktualisieren()" class="btn btn-warning"><img src="https://cdn-icons-png.flaticon.com/512/3580/3580284.png" class="mr-2" height="22px" alt="">Ticket-Liste aktualisieren</button>
                     <br><br>
+                   
+                    <div class="checkbox-wrapper-4">
+                        <input class="inp-cbx" id="NurGueltigeTicketsAnzeigen" onchange="ClientTicketsAktualisieren()" type="checkbox"/>
+                        <label class="cbx" for="NurGueltigeTicketsAnzeigen"><span>
+                        <svg width="12px" height="10px">
+                          <use xlink:href="#check-4"></use>
+                        </svg></span><span>Nur gültige Tickets anzeigen</span></label>
+                        <svg class="inline-svg">
+                          <symbol id="check-4" viewbox="0 0 12 10">
+                            <polyline points="1.5 6 4.5 9 10.5 1"></polyline>
+                          </symbol>
+                        </svg>
+                      </div>
+                    
 
                     <div id="AlleTicketsClient" style="display: block;">
                          
@@ -547,7 +663,7 @@
 <script>
     var ScrollPositionVorQRSCAN = 0;
     var qrCodeScanner;
-    var GueltigkeitsdauerInMillisekunden = 1 * 24 * 60 * 60 * 1000
+    var GueltigkeitsdauerInMillisekunden = 4 * 24 * 60 * 60 * 1000
     
     function QRCodeKontrollieren()
     {
@@ -707,8 +823,7 @@
     }
 
     function ClientTicketsAktualisieren()
-    {
-        
+    {        
         (async () =>
         {                        
             e("AlleTicketsClient").innerHTML = `<div class="spinner-border text-secondary" role="status" style="text-align: center;"></div><br><br>Lade Tickets ...`
@@ -738,6 +853,8 @@
                 var Hintergrundfarbe = ""
                 var GueltigHinweis = ""
 
+                var IstGueltigUndNichtAbgelaufen = false
+
                 if(TicketDetails.Gueltig)
                 {
                     if(TicketDetails.Ausstelldatum + GueltigkeitsdauerInMillisekunden < new Date().getTime())
@@ -749,6 +866,7 @@
                     {
                         Hintergrundfarbe = "rgba(60, 219, 114, 0.180)"
                         GueltigHinweis = `<strong class="Produkt ml-2" style="width: 180px; margin-top: 0px; height: 39px; padding: 5px; padding-left: 9px; background-color: rgba(60, 179, 114, 0.288);"><img src="https://i.imgur.com/X94IPqU.png" class="mr-2" height="18px" alt="">Ticket ist gültig</strong>`
+                        IstGueltigUndNichtAbgelaufen = true
                     }
                 }
                 else
@@ -757,14 +875,22 @@
                     GueltigHinweis = `<strong class="Produkt ml-2" style="width: 180px; margin-top: 0px; height: 39px; padding: 5px; padding-left: 9px; background-color: rgba(165, 42, 42, 0.74);"><img src="https://i.imgur.com/atRxfOG.png" class="mr-2" height="18px" alt="">Bereits eingelöst</strong>`
                 }
 
-                NeuesinnerHTML += `            
-                <div class="Produkt" style="background-color: ${Hintergrundfarbe};">
-                    <h5 class="card-title"><img src="https://i.imgur.com/VHqE0xP.png" class="mr-2" height="40px" alt=""><strong>Ticket vom ${GetDatumString(DatumObjektDiesesTickets)} ${GetTimeString(DatumObjektDiesesTickets)}</strong></h5>
-                    <button type="button" onclick="ClientCodeAnzeigen('${TicketIdDiesesTickets}', '${TicketDetails.Ausstelldatum}')" class="btn btn-secondary"><img src="https://cdn-icons-png.flaticon.com/512/5393/5393325.png" class="mr-2" height="22px" alt="">Code anzeigen</button>                                         
-                    ${GueltigHinweis}
-                </div> `              
+                if((e("NurGueltigeTicketsAnzeigen").checked && IstGueltigUndNichtAbgelaufen) || (!e("NurGueltigeTicketsAnzeigen").checked))
+                {
+                    NeuesinnerHTML += `            
+                    <div class="Produkt" style="background-color: ${Hintergrundfarbe};">
+                        <h5 class="card-title"><img src="https://i.imgur.com/VHqE0xP.png" class="mr-2" height="40px" alt=""><strong>Ticket vom ${GetDatumString(DatumObjektDiesesTickets)} ${GetTimeString(DatumObjektDiesesTickets)}</strong></h5>
+                        <button type="button" onclick="ClientCodeAnzeigen('${TicketIdDiesesTickets}', '${TicketDetails.Ausstelldatum}')" class="btn btn-secondary"><img src="https://cdn-icons-png.flaticon.com/512/5393/5393325.png" class="mr-2" height="22px" alt="">Code anzeigen</button>                                         
+                        ${GueltigHinweis}
+                    </div> `  
+                }                            
             }
             
+            if(NeuesinnerHTML == "")
+            {
+                NeuesinnerHTML = `<img src="https://cdn-icons-png.flaticon.com/512/5706/5706745.png" class="mr-2" height="70px" alt=""><strong>Leider keine Tickets gefunden ...</strong>`
+            }
+
             e("AlleTicketsClient").innerHTML = NeuesinnerHTML
 
         })()
